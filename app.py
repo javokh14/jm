@@ -1,4 +1,3 @@
-import os
 import json
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
@@ -6,16 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import libsql_client
-from dotenv import load_dotenv
 
-load_dotenv()
-
-TURSO_URL = os.getenv("TURSO_DATABASE_URL")
-TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
+# Baza ma'lumotlari to'g'ridan-to'g'ri kod ichida (https:// bilan)
+TURSO_URL = "https://jm-savdo-db-javokh14.aws-ap-northeast-1.turso.io"
+TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3OTAyNjY0NTgsImlkIjoiMDFhMGQ0MzAtNTIwMS03NzYwLWI1YmQtOGQ5ODc1ZWI0NTE1Iiwia2lkIjoiZElaN0NzZExlZXZIZkJwU29vWW9nVGNrd3NMczRXSG1LT0x0aTMzT0tPayIsInJpZCI6IjE5ZTNkOWU0LWNlZTktNDM4Mi05ZDdkLWM2ODExOGVmYTI0MCJ9.qcMRmcsang-9oS8cqcZoy-06jXgfU2MnuhI8vaEZipzuYXJF9b6LysKt27kGo1yF0FupbUP2-I9yI3SjFcvzCA"
 
 app = FastAPI(title="JM Savdo API")
 
-# Barcha domenlardan so'rov qabul qilish uchun CORS
+# Brauzerdan bemalol so'rovlar o'tishi uchun CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,11 +22,9 @@ app.add_middleware(
 )
 
 def get_db():
-    if not TURSO_URL or not TURSO_TOKEN:
-        raise RuntimeError("TURSO_DATABASE_URL yoki TURSO_AUTH_TOKEN topilmadi!")
     return libsql_client.create_client_sync(url=TURSO_URL, auth_token=TURSO_TOKEN)
 
-# Dastur ishga tushganda Turso bazasida jadvallarni yaratish
+# Jadvallarni avtomatik yaratish
 @app.on_event("startup")
 def init_db():
     client = get_db()
@@ -74,7 +69,7 @@ def init_db():
     """)
     client.close()
 
-# Modellarni e'lon qilish
+# Modellar
 class UserRegister(BaseModel):
     ism_familiya: str
     login: str
@@ -104,13 +99,12 @@ class OrderCreate(BaseModel):
 class StatusUpdate(BaseModel):
     holat: str
 
-# --- ASOSIY YO'NALISHLAR (ENDPOINTS) ---
-
+# Endpoints
 @app.get("/")
 def home():
     return {"holat": "JM Savdo Serveri Ishlayapti!"}
 
-# 1. Foydalanuvchilar (Auth)
+# Auth
 @app.post("/api/auth/register")
 def register(data: UserRegister):
     client = get_db()
@@ -151,7 +145,7 @@ def delete_user(login: str):
     client.close()
     return {"muvaffaqiyat": True}
 
-# 2. Mahsulotlar
+# Mahsulotlar
 @app.get("/api/products")
 def get_products():
     client = get_db()
@@ -198,7 +192,7 @@ def delete_product(product_id: int):
     client.close()
     return {"muvaffaqiyat": True}
 
-# 3. Buyurtmalar
+# Buyurtmalar
 @app.get("/api/orders")
 def get_orders(user_login: Optional[str] = None):
     client = get_db()
